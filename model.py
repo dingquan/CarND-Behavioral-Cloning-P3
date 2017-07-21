@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from keras.models import Sequential
 from keras.layers import Input, Flatten, Dense, Lambda, Cropping2D, Convolution2D
+import matplotlib.pyplot as plt
 
 def my_resize_function(input):
     from keras.backend import tf as ktf
@@ -20,19 +21,47 @@ measurements = []
 for line in lines:
     if (line[0] == 'center'): # skip header line
         continue
-    source_path = line[0]
-    filename = source_path.split('/')[-1]
-    current_path = '../p3/data/IMG/' + filename
-    image = cv2.imread(current_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    images.append(image)
+    source_path_center = line[0]
+    filename_center = source_path_center.split('/')[-1]
+    current_path_center = '../p3/data/IMG/' + filename_center
+    image_center = cv2.imread(current_path_center)
+    image_center = cv2.cvtColor(image_center, cv2.COLOR_BGR2RGB)
+    images.append(image_center)
     measurement = float(line[3])
     measurements.append(measurement)
     # flip the image
-    image_flipped = np.fliplr(image)
+    image_flipped = np.fliplr(image_center)
     measurement_flipped = -measurement
     images.append(image_flipped)
     measurements.append(measurement_flipped)
+    # use the side camera images
+    # correction = 0.1
+
+    # source_path_left = line[1]
+    # filename_left = source_path_left.split('/')[-1]
+    # current_path_left = '../p3/data/IMG/' + filename_left
+    # image_left = cv2.imread(current_path_left)
+    # image_left = cv2.cvtColor(image_left, cv2.COLOR_BGR2RGB)
+    # images.append(image_left)
+    # measurement_left = measurement + correction
+    # measurements.append(measurement_left)
+    # image_flipped_left = np.fliplr(image_left)
+    # measurement_flipped_left = -measurement_left
+    # images.append(image_flipped_left)
+    # measurements.append(measurement_flipped_left)
+
+    # source_path_right = line[2]
+    # filename_right = source_path_right.split('/')[-1]
+    # current_path_right = '../p3/data/IMG/' + filename_right
+    # image_right = cv2.imread(current_path_right)
+    # image_right = cv2.cvtColor(image_right, cv2.COLOR_BGR2RGB)
+    # images.append(image_right)
+    # measurement_right = measurement + correction
+    # measurements.append(measurement_right)
+    # image_flipped_right = np.fliplr(image_right)
+    # measurement_flipped_right = -measurement_right
+    # images.append(image_flipped_right)
+    # measurements.append(measurement_flipped_right)
 
 X_train = np.array(images)
 y_train = np.array(measurements)
@@ -53,7 +82,7 @@ model.add(Dense(10))
 model.add(Dense(1))
 
 model.compile(loss='mse', optimizer='adam')
-model.fit(X_train, y_train, validation_split=0.2, shuffle=True, nb_epoch=1)
+model.fit(X_train, y_train, validation_split=0.2, shuffle=True, nb_epoch=5)
 
 model.save('model.h5')
 
