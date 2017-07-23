@@ -4,13 +4,16 @@ import numpy as np
 from keras.models import Sequential
 from keras.layers import Input, Flatten, Dense, Lambda, Cropping2D, Convolution2D
 import matplotlib.pyplot as plt
+from sklearn.utils import shuffle
 
-def my_resize_function(input):
+def resize_and_normalization(input):
     from keras.backend import tf as ktf
-    return ktf.image.resize_images(input, (45, 160))
+    resized = ktf.image.resize_images(input, (64, 64))
+    resized = resized / 255.0 - 0.5
+    return resized
 
 lines = []
-with open('../p3/data/driving_log.csv') as csvfile:
+with open('../p3/both-tracks/driving_log.csv') as csvfile:
     reader = csv.reader(csvfile)
     for line in reader:
         lines.append(line)
@@ -23,7 +26,7 @@ for line in lines:
         continue
     source_path_center = line[0]
     filename_center = source_path_center.split('/')[-1]
-    current_path_center = '../p3/data/IMG/' + filename_center
+    current_path_center = '../p3/both-tracks/IMG/' + filename_center
     image_center = cv2.imread(current_path_center)
     image_center = cv2.cvtColor(image_center, cv2.COLOR_BGR2RGB)
     images.append(image_center)
@@ -66,10 +69,13 @@ for line in lines:
 X_train = np.array(images)
 y_train = np.array(measurements)
 
+X_train, y_train = shuffle(X_train, y_train, random_state=12345)
+
 model = Sequential()
 model.add(Cropping2D(cropping=((50,20), (0,0)), input_shape=(160,320,3)))
 # model.add(Lambda(lambda x: my_resize_function(x)))
-model.add(Lambda(lambda x: x/255.0 - 0.5))
+# model.add(Lambda(lambda x: x/255.0 - 0.5))
+model.add(Lambda(resize_and_normalization))
 model.add(Convolution2D(24,5,5, subsample=(2,2), activation="relu"))
 model.add(Convolution2D(36,5,5, subsample=(2,2), activation="relu"))
 model.add(Convolution2D(48,5,5, subsample=(2,2), activation="relu"))
