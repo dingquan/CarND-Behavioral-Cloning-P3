@@ -38,11 +38,11 @@ for line in lines:
     images.append(image_flipped)
     measurements.append(measurement_flipped)
     # use the side camera images
-    # correction = 0.1
+    # correction = 0.15
 
     # source_path_left = line[1]
     # filename_left = source_path_left.split('/')[-1]
-    # current_path_left = '../p3/data/IMG/' + filename_left
+    # current_path_left = '../p3/both-tracks/IMG/' + filename_left
     # image_left = cv2.imread(current_path_left)
     # image_left = cv2.cvtColor(image_left, cv2.COLOR_BGR2RGB)
     # images.append(image_left)
@@ -55,7 +55,7 @@ for line in lines:
 
     # source_path_right = line[2]
     # filename_right = source_path_right.split('/')[-1]
-    # current_path_right = '../p3/data/IMG/' + filename_right
+    # current_path_right = '../p3/both-tracks/IMG/' + filename_right
     # image_right = cv2.imread(current_path_right)
     # image_right = cv2.cvtColor(image_right, cv2.COLOR_BGR2RGB)
     # images.append(image_right)
@@ -72,7 +72,7 @@ y_train = np.array(measurements)
 X_train, y_train = shuffle(X_train, y_train, random_state=12345)
 
 model = Sequential()
-model.add(Cropping2D(cropping=((50,20), (0,0)), input_shape=(160,320,3)))
+model.add(Cropping2D(cropping=((20,20), (0,0)), input_shape=(160,320,3)))
 # model.add(Lambda(lambda x: my_resize_function(x)))
 # model.add(Lambda(lambda x: x/255.0 - 0.5))
 model.add(Lambda(resize_and_normalization))
