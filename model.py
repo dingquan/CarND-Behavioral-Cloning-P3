@@ -5,6 +5,7 @@ from keras.models import Sequential
 from keras.layers import Input, Flatten, Dense, Lambda, Cropping2D, Convolution2D
 import matplotlib.pyplot as plt
 from sklearn.utils import shuffle
+from sklearn.model_selection import train_test_split
 
 def resize_and_normalization(input):
     from keras.backend import tf as ktf
@@ -12,69 +13,53 @@ def resize_and_normalization(input):
     resized = resized / 255.0 - 0.5
     return resized
 
-lines = []
+def generator(samples, batch_size=32):
+    num_samples = len(samples)
+    while 1: # Loop forever so the generator never terminates
+        shuffle(samples)
+        for offset in range(0, num_samples, batch_size):
+            batch_samples = samples[offset:offset+batch_size]
+
+            images = []
+            angles = []
+            for batch_sample in batch_samples:
+                filename_center = batch_sample[0].split('/')[-1]
+                path_center = '../p3/both-tracks/IMG/' + filename_center
+                image_center = cv2.imread(path_center)
+                image_center = cv2.cvtColor(image_center, cv2.COLOR_BGR2RGB)
+                images.append(image_center)
+                angle_center = float(batch_sample[3])
+                angles.append(angle_center)
+
+                # flip the image
+                image_flipped = np.fliplr(image_center)
+                angle_flipped = -angle_center
+                images.append(image_flipped)
+                angles.append(angle_flipped)
+
+            X_train = np.array(images)
+            y_train = np.array(angles)
+            yield shuffle(X_train, y_train)
+
+# Read lines from CSV file
+samples = []
 with open('../p3/both-tracks/driving_log.csv') as csvfile:
     reader = csv.reader(csvfile)
     for line in reader:
-        lines.append(line)
+        samples.append(line)
 
-images = []
-measurements = []
+# Shuffle the samples before splitting to test and validation set
+# because in driving_log.csv file, data for track 2 follows data for track 1
+# we want to shuffle it so validation set don't end up with data from track 2 only
+shuffle(samples)
+train_samples, validation_samples = train_test_split(samples, test_size=0.2)
 
-for line in lines:
-    if (line[0] == 'center'): # skip header line
-        continue
-    source_path_center = line[0]
-    filename_center = source_path_center.split('/')[-1]
-    current_path_center = '../p3/both-tracks/IMG/' + filename_center
-    image_center = cv2.imread(current_path_center)
-    image_center = cv2.cvtColor(image_center, cv2.COLOR_BGR2RGB)
-    images.append(image_center)
-    measurement = float(line[3])
-    measurements.append(measurement)
-    # flip the image
-    image_flipped = np.fliplr(image_center)
-    measurement_flipped = -measurement
-    images.append(image_flipped)
-    measurements.append(measurement_flipped)
-    # use the side camera images
-    # correction = 0.15
+train_generator = generator(train_samples, batch_size=32)
+validation_generator = generator(validation_samples, batch_size=32)
 
-    # source_path_left = line[1]
-    # filename_left = source_path_left.split('/')[-1]
-    # current_path_left = '../p3/both-tracks/IMG/' + filename_left
-    # image_left = cv2.imread(current_path_left)
-    # image_left = cv2.cvtColor(image_left, cv2.COLOR_BGR2RGB)
-    # images.append(image_left)
-    # measurement_left = measurement + correction
-    # measurements.append(measurement_left)
-    # image_flipped_left = np.fliplr(image_left)
-    # measurement_flipped_left = -measurement_left
-    # images.append(image_flipped_left)
-    # measurements.append(measurement_flipped_left)
-
-    # source_path_right = line[2]
-    # filename_right = source_path_right.split('/')[-1]
-    # current_path_right = '../p3/both-tracks/IMG/' + filename_right
-    # image_right = cv2.imread(current_path_right)
-    # image_right = cv2.cvtColor(image_right, cv2.COLOR_BGR2RGB)
-    # images.append(image_right)
-    # measurement_right = measurement + correction
-    # measurements.append(measurement_right)
-    # image_flipped_right = np.fliplr(image_right)
-    # measurement_flipped_right = -measurement_right
-    # images.append(image_flipped_right)
-    # measurements.append(measurement_flipped_right)
-
-X_train = np.array(images)
-y_train = np.array(measurements)
-
-X_train, y_train = shuffle(X_train, y_train, random_state=12345)
-
+# This is the model published by NVIDIA (Except for the resizing)
 model = Sequential()
 model.add(Cropping2D(cropping=((20,20), (0,0)), input_shape=(160,320,3)))
-# model.add(Lambda(lambda x: my_resize_function(x)))
-# model.add(Lambda(lambda x: x/255.0 - 0.5))
 model.add(Lambda(resize_and_normalization))
 model.add(Convolution2D(24,5,5, subsample=(2,2), activation="relu"))
 model.add(Convolution2D(36,5,5, subsample=(2,2), activation="relu"))
@@ -88,7 +73,12 @@ model.add(Dense(10))
 model.add(Dense(1))
 
 model.compile(loss='mse', optimizer='adam')
-model.fit(X_train, y_train, validation_split=0.2, shuffle=True, nb_epoch=5)
+# model.fit(X_train, y_train, validation_split=0.2, shuffle=True, nb_epoch=5)
+# We are flipping images in the generator, so we're creating 2x number samples as input
+model.fit_generator(train_generator, 
+    samples_per_epoch=len(train_samples) * 2, 
+    validation_data=validation_generator,
+    nb_val_samples=len(validation_samples) * 2,
+    nb_epoch=5)
 
 model.save('model.h5')
-
